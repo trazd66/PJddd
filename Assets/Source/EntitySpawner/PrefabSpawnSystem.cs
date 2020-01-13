@@ -34,10 +34,10 @@ public class PrefabSpawnSystem : JobComponentSystem
             for (int i = 0; i < spawner.Count; i++)
             {
                 var instance = CommandBuffer.Instantiate(index, spawner.PrefabEntity);
-                // Place the instantiated in a grid with some noise
                 
                 CommandBuffer.SetComponent(index, instance, translation);
                 CommandBuffer.SetComponent(index, instance, rotation);
+                
             }
 
             CommandBuffer.DestroyEntity(index, entity);
