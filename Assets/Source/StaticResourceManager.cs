@@ -32,6 +32,7 @@ public class StaticResourceManager : MonoBehaviour
 
     public GameObject mainCharacterGameObject;
 
+    public Material testMaterial;
 
 
 }

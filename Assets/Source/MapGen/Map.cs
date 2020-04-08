@@ -37,7 +37,7 @@ namespace MapGen{
                     if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
                         map[x,y] = (int) tileType.border;
                     }else {
-                        map[x,y] = (pseudoRandom.Next(0,100) < randomFillPercent)? (int)tileType.border: (int)tileType.floor;
+                        map[x,y] = (pseudoRandom.Next(0,100) < randomFillPercent)? (int)tileType.floor: (int)tileType.border;
                     }
                 }
             }
@@ -58,7 +58,7 @@ namespace MapGen{
                     //below are parts that can be modified to get different desired rooms
                     if (neighbourWallTiles > 4)
                         tileMap[x,y] = (int) tileType.border;
-                    else if (neighbourWallTiles < 4)
+                    else if (neighbourWallTiles <= 4)
                         tileMap[x,y] = (int) tileType.floor;
 
                 }

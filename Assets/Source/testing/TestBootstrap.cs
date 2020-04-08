@@ -34,13 +34,14 @@ public class TestBootstrap : MonoBehaviour
         // World.Active.EntityManager.AddComponentData(spawner, new Translation());
         // World.Active.EntityManager.AddComponentData(spawner, new Rotation());
 
-        int[,] tmap = Map.generateRandomMap(100,100,60).tileMap;
+        int[,] tmap = Map.generateRandomMap(50,50,30).tileMap;
 
         MapMeshGenerator mGen = new MapMeshGenerator();
         Entity map = World.Active.EntityManager.CreateEntity();
-        World.Active.EntityManager.AddSharedComponentData (map, mGen.generateRenderMesh(tmap, 2));
+        World.Active.EntityManager.AddSharedComponentData (map, mGen.generateRenderMesh(tmap, StaticResourceManager.S.testMaterial, 1));
         World.Active.EntityManager.AddComponentData(map, new Translation());
         World.Active.EntityManager.AddComponentData(map, new Rotation());
+        World.Active.EntityManager.AddComponentData(map, new LocalToWorld());
 
     }
 

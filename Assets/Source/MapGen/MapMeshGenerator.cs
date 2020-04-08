@@ -18,7 +18,7 @@ namespace MapGen{
         HashSet<int> checkedVertices = new HashSet<int>();
 
 
-        public RenderMesh generateRenderMesh(int[,] map, float sqaureSize){
+        public RenderMesh generateRenderMesh(int[,] map, Material material, float sqaureSize){
             squareGrid = new SquareGrid(map,sqaureSize);
 
             for (int x = 0; x < squareGrid.GetLength(0); x++){
@@ -35,6 +35,7 @@ namespace MapGen{
             mesh.RecalculateNormals();
 
             rend.mesh = mesh;
+            rend.material = material;
 
             return rend;
         }
@@ -250,16 +251,16 @@ namespace MapGen{
 
                 ControlNode[,] controlNodes = new ControlNode[nodeCountX,nodeCountY];
 
-                for (int x = 0; x < nodeCountX; x ++) {
-                    for (int y = 0; y < nodeCountY; y ++) {
+                for (int x = 0; x < nodeCountX; x++) {
+                    for (int y = 0; y < nodeCountY; y++) {
                         Vector3 pos = new Vector3(-mapWidth/2 + x * squareSize + squareSize/2, 0, -mapHeight/2 + y * squareSize + squareSize/2);
                         controlNodes[x,y] = new ControlNode(pos,map[x,y] == 0, squareSize);
                     }
                 }
 
                 squares = new Square[nodeCountX -1,nodeCountY -1];
-                for (int x = 0; x < nodeCountX-1; x ++) {
-                    for (int y = 0; y < nodeCountY-1; y ++) {
+                for (int x = 0; x < nodeCountX - 1; x++) {
+                    for (int y = 0; y < nodeCountY - 1; y++) {
                         squares[x,y] = new Square(controlNodes[x,y+1], controlNodes[x+1,y+1], controlNodes[x+1,y], controlNodes[x,y]);
                     }
                 }
