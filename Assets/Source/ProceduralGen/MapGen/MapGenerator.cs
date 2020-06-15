@@ -8,7 +8,7 @@ namespace MapGen{
 
         enum tileType{
             floor = 0,
-            border = 1,
+            wall = 1,
             passage = 2,
             
         }
@@ -265,46 +265,6 @@ namespace MapGen{
             return x >= 0 && x < width && y >= 0 && y < height;
         }
 
-
-        void RandomFillMap() {
-        
-            if (useRandomSeed) {
-                seed = System.DateTime.UtcNow.ToString();
-            }
-
-            System.Random pseudoRandom = new System.Random(seed.GetHashCode());
-
-            for (int x = 0; x < width; x ++) {
-                for (int y = 0; y < height; y ++) {
-                    if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
-                        map[x,y] = 1;
-                    }else {
-                        map[x,y] = (pseudoRandom.Next(0,100) < randomFillPercent)? 1: 0;
-                    }
-                }
-            }
-        }
-
-        /*
-            helper method for smoothing the maps,for example by turning
-            * * *    * * *
-            *   * => * * * and vice versa
-            * * *    * * *
-        */
-        void SmoothMap() {
-            for (int x = 0; x < width; x ++) {
-                for (int y = 0; y < height; y ++) {
-                    int neighbourWallTiles = GetSurroundingWallCount(x,y);
-
-                    //below are parts that can be modified to get different desired rooms
-                    if (neighbourWallTiles > 4)
-                        map[x,y] = 1;
-                    else if (neighbourWallTiles < 4)
-                        map[x,y] = 0;
-
-                }
-            }
-        }
 
     /*
         helper method for detecing how many surrounding tiles are also walls

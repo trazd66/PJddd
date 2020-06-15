@@ -6,17 +6,17 @@ namespace MapGen
     public static class MapGenHelper
     {
         /*
-        helper method for detecing how many surrounding tiles are also walls
+        helper method for detecing how many surrounding tiles are also walls/walls
                 * * *
                 * * *            use this diagram for intuition
                 * * *
         */
-        public static int GetSurroundingWallCount(int gridX, int gridY, int width, int height, DynamicBuffer<TileMapBufferElement> tileMap)
+        public static int GetSurroundingWallCount(int gridX, int gridY, int width, int height, DynamicBuffer<TileMapBufferElement> tileMap, int distance = 1)
         {
             int wallCount = 0;
-            for (int neighbourX = gridX - 1; neighbourX <= gridX + 1; neighbourX++)
+            for (int neighbourX = gridX - distance; neighbourX <= gridX + distance; neighbourX++)
             {
-                for (int neighbourY = gridY - 1; neighbourY <= gridY + 1; neighbourY++)
+                for (int neighbourY = gridY - distance; neighbourY <= gridY + distance; neighbourY++)
                 {
                     if (IsInMapRange(neighbourX, neighbourY, width, height))
                     {

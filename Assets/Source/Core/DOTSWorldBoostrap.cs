@@ -20,8 +20,6 @@ namespace DOTS.Bootstrap
  
         public bool Initialize(string defaultWorldName)
         {
-            Debug.Log("Executing World Bootstrap");
-
             // setting up default world
             defaultWorldInit();
 
@@ -33,7 +31,7 @@ namespace DOTS.Bootstrap
 
         public static void defaultWorldInit()
         {
-            var default_world = WorldManager.getOrCreateWorld("Default World");
+            var default_world = WorldManager.getOrCreateWorld("DefaultWorld");
             World.DefaultGameObjectInjectionWorld = default_world;
 
             var default_systems = DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default) as List<Type>;
@@ -45,8 +43,19 @@ namespace DOTS.Bootstrap
 
         public static void mapGenWorldInit()
         {
-            var mapGenWorld = WorldManager.getOrCreateWorld("MapGenWorld");
+            //Create world
+            World mapGenWorld = WorldManager.getOrCreateWorld("MapGenWorld");
+            //Create system groups
+            var initSysGroup = mapGenWorld.GetOrCreateSystem<InitializationSystemGroup>();
 
+            var ecbSystem = mapGenWorld.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+            var mapGenSys = mapGenWorld.CreateSystem<MapGenSystem>();
+            var mapMeshGenSys = mapGenWorld.CreateSystem<MapMeshGenSystem>();
+            initSysGroup.AddSystemToUpdateList(mapGenSys);
+            initSysGroup.AddSystemToUpdateList(ecbSystem);
+            initSysGroup.AddSystemToUpdateList(mapMeshGenSys);
+
+            initSysGroup.SortSystemUpdateList();
 
             UpdatePlayerLoop(mapGenWorld);
         }

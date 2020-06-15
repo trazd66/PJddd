@@ -3,6 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Rendering;
 using Unity.Entities;
+using UnityEngine.Tilemaps;
+using Unity.Collections;
+using Unity.Sample.Core;
+
 namespace MapGen{
     /*
     Code adpated from https://github.com/SebLague/Procedural-Cave-Generation
@@ -18,14 +22,21 @@ namespace MapGen{
         HashSet<int> checkedVertices = new HashSet<int>();
 
 
-        public RenderMesh generateRenderMesh(int[,] map, Material material, float sqaureSize){
-            squareGrid = new SquareGrid(map,sqaureSize);
+        public MapMeshGenerator(DynamicBuffer<int> tilemap, int width, int height, float sqaureSize)
+        {
+           squareGrid = new SquareGrid(tilemap.AsNativeArray(), width, height, sqaureSize);
 
-            for (int x = 0; x < squareGrid.GetLength(0); x++){
-                for (int y = 0; y < squareGrid.GetLength(1); y++){
-                    TriangulateSquare(squareGrid.GetSquare(x,y));
+            for (int x = 0; x < squareGrid.GetLength(0); x++)
+            {
+                for (int y = 0; y < squareGrid.GetLength(1); y++)
+                {
+                    TriangulateSquare(squareGrid.GetSquare(x, y));
                 }
             }
+
+        }
+
+        public RenderMesh generateRenderMesh(Material material){
 
             RenderMesh rend = new RenderMesh();
 
@@ -39,6 +50,7 @@ namespace MapGen{
 
             return rend;
         }
+
         void TriangulateSquare(Square square) {
             switch (square.configuration) {
             case 0:
@@ -262,6 +274,34 @@ namespace MapGen{
                 for (int x = 0; x < nodeCountX - 1; x++) {
                     for (int y = 0; y < nodeCountY - 1; y++) {
                         squares[x,y] = new Square(controlNodes[x,y+1], controlNodes[x+1,y+1], controlNodes[x+1,y], controlNodes[x,y]);
+                    }
+                }
+            }
+
+            public SquareGrid(NativeArray<int> map, int width, int height, float squareSize)
+            {
+
+                float mapWidth = width * squareSize;
+                float mapHeight = height * squareSize;
+
+                ControlNode[,] controlNodes = new ControlNode[width, height];
+
+                for (int y = 0; y < height; y++)
+                {
+                    int y_index = width * y;
+                    for (int x = 0; x < width; x++)
+                    {
+                        Vector3 pos = new Vector3(-mapWidth / 2 + x * squareSize + squareSize / 2, 0, -mapHeight / 2 + y * squareSize + squareSize / 2);
+                        controlNodes[x, y] = new ControlNode(pos, map[x + y_index] == 1, squareSize);
+                    }
+                }
+
+                squares = new Square[width - 1, height - 1];
+                for (int x = 0; x < width - 1; x++)
+                {
+                        for (int y = 0; y < height - 1; y++)
+                        {
+                        squares[x, y] = new Square(controlNodes[x, y + 1], controlNodes[x + 1, y + 1], controlNodes[x + 1, y], controlNodes[x, y]);
                     }
                 }
             }
