@@ -21,9 +21,14 @@ namespace MapGen{
         List<List<int>> outlines = new List<List<int>> ();
         HashSet<int> checkedVertices = new HashSet<int>();
 
+        int width;
+        int height;
+
 
         public MapMeshGenerator(DynamicBuffer<int> tilemap, int width, int height, float sqaureSize)
         {
+           this.width = width;
+           this.height = height;
            squareGrid = new SquareGrid(tilemap.AsNativeArray(), width, height, sqaureSize);
 
             for (int x = 0; x < squareGrid.GetLength(0); x++)
@@ -39,16 +44,31 @@ namespace MapGen{
         public RenderMesh generateRenderMesh(Material material){
 
             RenderMesh rend = new RenderMesh();
-
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.ToArray();
             mesh.triangles = triangles.ToArray();
-            mesh.RecalculateNormals();
 
+/*            mesh.uv = generateUVs();
+*/            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mesh.Optimize();
             rend.mesh = mesh;
             rend.material = material;
-
+/*            rend.receiveShadows = true;
+*/
             return rend;
+        }
+
+        public Vector2[] generateUVs()
+        {
+            var uvs = new Vector2[vertices.Count];
+            for (int i = 0; i < vertices.Count /3; i++)
+            {
+                uvs[i*3] = new Vector2(0, 0);
+                uvs[i * 3 + 1] = new Vector2(0, 1);
+                uvs[i * 3 + 2] = new Vector2(1, 0);
+            }
+            return uvs;
         }
 
         void TriangulateSquare(Square square) {
@@ -299,8 +319,8 @@ namespace MapGen{
                 squares = new Square[width - 1, height - 1];
                 for (int x = 0; x < width - 1; x++)
                 {
-                        for (int y = 0; y < height - 1; y++)
-                        {
+                    for (int y = 0; y < height - 1; y++)
+                    {
                         squares[x, y] = new Square(controlNodes[x, y + 1], controlNodes[x + 1, y + 1], controlNodes[x + 1, y], controlNodes[x, y]);
                     }
                 }

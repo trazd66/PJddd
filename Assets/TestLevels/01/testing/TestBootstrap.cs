@@ -30,7 +30,8 @@ public class TestBootstrap : MonoBehaviour
         World mapGenWorld = WorldManager.getOrCreateWorld("MapGenWorld");
         if (Input.GetKeyDown(KeyCode.A))
         {
-            mapRepo.generateRandomMap(mapType.Cave, 100, 200,seed:"asd",squareSize:2f);
+            mapGenWorld.EntityManager.DestroyEntity(mapGenWorld.EntityManager.GetAllEntities());
+            mapRepo.generateRandomMap(mapType.Cave, 200, 100);
         }
         if (Input.GetKeyDown(KeyCode.B))
         {

@@ -206,10 +206,10 @@ namespace MapGen{
             return line;
         }
 
-        Vector3 CoordToWorldPoint(Coord tile) {
+  /*     static Vector3 CoordToWorldPoint(Coord tile) {
             return new Vector3 (-width / 2 + .5f + tile.tileX, 0, -height / 2 + .5f + tile.tileY);
         }
-
+*/
         List<List<Coord>> GetRegions(int tileType) {
             List<List<Coord>> regions = new List<List<Coord>> ();
             int[,] mapFlags = new int[width,height];

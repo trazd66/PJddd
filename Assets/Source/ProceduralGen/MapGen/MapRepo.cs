@@ -41,7 +41,7 @@ public class MapRepo
             width = width, 
             height = height,
             mType = mType,
-            randomFillPercent = 38, 
+            randomFillPercent = 45, 
             seed = seed, 
             squareSize = squareSize});
 
