@@ -3,13 +3,16 @@ using Unity.Entities;
 using UnityEditor;
 using UnityEngine;
 
-#if UNITY_EDITOR
 
 
 public interface IPrefabAsset
 {
 
 }
+#if UNITY_EDITOR
+
+
+
 
 
 public class PrefabAssetRegistryAuthoring : MonoBehaviour, IConvertGameObjectToEntity , IDeclareReferencedPrefabs

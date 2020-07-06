@@ -4,5 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
-  m_configObjects: {}
+  m_Scenes:
+  - enabled: 1
+    path: Assets/TestLevels/01/tlvl01.unity
+    guid: 37c63fcaf2a5f06479c3153fb17afc52
+  m_configObjects:
+    com.unity.input.settings: {fileID: 11400000, guid: a56a82afa1dd6354a8084e3be1f1195c,
+      type: 2}

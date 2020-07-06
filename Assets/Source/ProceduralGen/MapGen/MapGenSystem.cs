@@ -2,17 +2,12 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Transforms;
 using static Unity.Mathematics.math;
-using static Unity.Mathematics.Random;
 
 using MapGen;
-using Unity.Sample.Core;
 using System.Linq;
 using System;
 using Random = Unity.Mathematics.Random;
-using Unity.Entities.UniversalDelegates;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -33,21 +28,24 @@ public class MapGenSystem : SystemBase
         // Acquire an ECB and convert it to a concurrent one to be able
         // to use it from a parallel job.
         var ecb = ecbSystem.CreateCommandBuffer().ToConcurrent();
-        Entities.WithAny<T_TileMapGen>().ForEach(
-            (Entity entity, int entityInQueryIndex, ref MapGenRequirement mapGenRequirement) =>
+        Entities.WithAny<TileMapGeneration.T_InitialGen>().ForEach(
+            (Entity entity, int entityInQueryIndex, ref MapGenRequirement mapGenRequirement, ref MapInfo mapInfo) =>
         {
             var tileMapBuffer = ecb.AddBuffer<TileMapBufferElement>(entityInQueryIndex, entity);
 
             createTileMap(in mapGenRequirement, ref tileMapBuffer);
             SmoothMap(in mapGenRequirement, ref tileMapBuffer);
+            mapAllIslands(in mapGenRequirement, ref tileMapBuffer);
+            SmoothMap(in mapGenRequirement, ref tileMapBuffer, 1);
 
-
-            ecb.RemoveComponent<T_TileMapGen>(entityInQueryIndex, entity);//TileMapGeneartion finished
+            ecb.RemoveComponent<TileMapGeneration.T_InitialGen>(entityInQueryIndex, entity);//TileMapGeneartion finished
+            ecb.AddComponent<TileMapGeneration.T_MeshGen>(entityInQueryIndex, entity);//Request starting mesh generation
         }
         ).ScheduleParallel();
         ecbSystem.AddJobHandleForProducer(this.Dependency);
 
     }
+
 
     static void createTileMap(in MapGenRequirement mapGenRequirement, ref DynamicBuffer<TileMapBufferElement> tileMapBuffer)
     {
@@ -111,7 +109,7 @@ public class MapGenSystem : SystemBase
         }
 
 
-        mapAllIslands(in mapGenRequirement, ref tileMapBuffer);
+        
 
     }
 
@@ -432,95 +430,6 @@ public class MapGenSystem : SystemBase
 
         return line;
     }
-    static List<Coord> GetLine(Coord from, Coord to, NativeString64 seed)
-    {
-        List<Coord> line_actual = new List<Coord>();
-
-        int dx = to.tileX - from.tileX;
-        int dy = to.tileY - from.tileY;
-
-        bool inverted = false;
-        float step = sign(dx);
-        float gradientStep = sign(dy);
-
-        int longest = abs(dx);
-        int shortest = abs(dy);
-
-        Random pseudoRandom = new Random((uint)seed.GetHashCode());
-
-
-        if (longest < shortest)
-        {
-            inverted = true;
-            longest = abs(dy);
-            shortest = abs(dx);
-            step = sign(dy);
-            gradientStep = sign(dx);
-        }
-
-        int gradientAccumulation = longest / 2;
-
-        int x_straight = from.tileX;
-        int y_straight = from.tileY;
-        int x_actual = from.tileX;
-        int y_actual = from.tileY;
-
-/*
-        while (y_actual != to.tileY || x_actual != to.tileX)
-        {
-
-        }*/
-
-        for (int i = 0; i < longest; i++)
-        {
-            gradientAccumulation += shortest;
-
-            if (inverted)
-            {
-                y_straight += (int)step;
-
-                if (gradientAccumulation >= longest)
-                {
-                    x_straight += (int)gradientStep;
-                    gradientAccumulation -= longest;
-                }
-
-                y_actual = y_straight;
-                Debug.Log((abs(x_actual - x_straight)+ "   " + abs(to.tileY - y_actual) + " x act: " + x_actual +  " x_str: " + x_straight));
-                if (abs(x_actual - x_straight) < abs(to.tileY - y_actual) / 2)
-                {
-                    x_actual = x_actual + pseudoRandom.NextInt(-1, 1); 
-                }else
-                {
-                    x_actual = x_actual + (int)gradientStep;
-                }
-            }
-            else
-            {
-                x_straight += (int)step;
-                if (gradientAccumulation >= longest)
-                {
-                    y_straight += (int)gradientStep;
-                    gradientAccumulation -= longest;
-                }
-
-                x_actual = x_straight;
-                Debug.Log((abs(y_actual - y_straight) + "   " + abs(to.tileX - x_actual) + " y act: " + y_actual + " y_str: " + y_straight));
-                if (abs(y_actual - y_straight) < abs(to.tileX - x_actual) / 2)
-                {
-                    y_actual = y_actual + pseudoRandom.NextInt(-1, 1);
-                }
-                else
-                {
-                    y_actual = y_actual + (int)gradientStep;
-                }
-            }
-
-            line_actual.Add(new Coord(x_actual, y_actual));
-        }
-        return line_actual;
-    }
-
 
 
     /*

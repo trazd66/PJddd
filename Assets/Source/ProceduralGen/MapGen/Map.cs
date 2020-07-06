@@ -16,7 +16,7 @@ namespace MapGen{
 
     }
 
-    enum TileType
+    public enum TileType
     {
         floor = 0,
         wall = 1,
@@ -36,8 +36,22 @@ namespace MapGen{
         public int value;
     }
 
-    public struct T_TileMapGen : IComponentData
+    public class TileMapGeneration
     {
+        public struct T_InitialGen : IComponentData
+        {
+
+        }
+
+        public struct T_MeshGen : IComponentData
+        {
+
+        }
+
+        public struct T_SpawnFlagGen : IComponentData
+        {
+
+        }
 
     }
 
@@ -57,6 +71,38 @@ namespace MapGen{
         public NativeString64 seed;
         //add others later
     }
+
+
+    public enum mapTheme
+    {
+        test
+    }
+
+    public enum generationStage
+    {
+        tileGen,
+        meshGen,
+        meshPhysicsGen,
+        spawnGen,
+        ready,
+        transferd,
+    }
+
+    public struct MapInfo : IComponentData
+    {
+        public Entity entity;
+        public mapTheme theme;
+        public NativeString64 seed;
+        public generationStage genStage;
+        public NativeString64 currWorldName;
+
+        public void nextGenStage()
+        {
+            this.genStage++;
+        }
+
+    }
+
 
 
 }

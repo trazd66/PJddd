@@ -32,37 +32,104 @@ public class MapMeshGenSystem : SystemBase
         BufferFromEntity<TileMapBufferElement> lookup = GetBufferFromEntity<TileMapBufferElement>();
 
 
-        Entities.WithNone<RenderMesh>().ForEach(
+        Entities.WithAny<TileMapGeneration.T_MeshGen>().ForEach(
             (Entity entity, int entityInQueryIndex, in MapGenRequirement mapGenReq) =>
             {
             DynamicBuffer<TileMapBufferElement> tileMapBuffers = lookup[entity];
-            if (tileMapBuffers.Length > 0)
-            {
-                RenderMesh tileMapRenderMesh = generateRenderMesh(in mapGenReq, in tileMapBuffers);
-                ecb.AddComponent(entity, new LocalToWorld { });
-                ecb.AddSharedComponent(entity, tileMapRenderMesh);
-                    ecb.AddComponent(entity, new RenderBounds
+                if (tileMapBuffers.Length > 0)
+                {
+                    MapMeshGenerator mapMeshGenerator = GetMapMeshGenerator(in mapGenReq, in tileMapBuffers, TileType.wall);
+
+                    RenderMesh tileMapRenderMesh = mapMeshGenerator.generateRenderMesh(
+                        Resources.Load("testMaterial", typeof(UnityEngine.Material)) as UnityEngine.Material,
+                        mapMeshGenerator.createTileMesh());
+                    //TODO: Make it read the materail from a material registry instead
+                    
+                    var meshCoillider = MapGenPhysics.createMeshCollider(mapMeshGenerator.vertices.ToArray(), mapMeshGenerator.triangles.ToArray());
+
+                    var tileMeshEntity = ecb.CreateEntity();
+                    ecb.AddComponent(tileMeshEntity, new PhysicsCollider { Value = meshCoillider });
+/*                    ecb.AddComponent(tileMeshEntity, new Parent {Value=entity});
+*/
+                    ecb.AddComponent(tileMeshEntity, new LocalToWorld { });
+                    ecb.AddSharedComponent(tileMeshEntity, tileMapRenderMesh);
+                    ecb.AddComponent(tileMeshEntity, new RenderBounds
                     {
                         Value =
                         new AABB
                         {
                             Center = 0,
-                            Extents = 0
+                            Extents = 10000000//for testing purpose
                         }
                     });
-                    ecb.AddComponent(entity, new Translation { });
-                }
+                    ecb.AddComponent(tileMeshEntity, new Translation { });
 
+
+
+                    RenderMesh wallRenderMesh = mapMeshGenerator.generateRenderMesh(
+    Resources.Load("testMaterial", typeof(UnityEngine.Material)) as UnityEngine.Material,
+    mapMeshGenerator.CreateWallMesh(5));
+                    //TODO: Make it read the materail from a material registry instead
+
+                    var wallMeshCoillider = MapGenPhysics.createMeshCollider(mapMeshGenerator.wallVertices.ToArray(), mapMeshGenerator.wallTriangles.ToArray());
+
+                    var wallMeshEntity = ecb.CreateEntity();
+                    ecb.AddComponent(wallMeshEntity, new PhysicsCollider { Value = wallMeshCoillider });
+                    /*                    ecb.AddComponent(tileMeshEntity, new Parent {Value=entity});
+                    */
+                    ecb.AddComponent(wallMeshEntity, new LocalToWorld { });
+                    ecb.AddSharedComponent(wallMeshEntity, wallRenderMesh);
+                    ecb.AddComponent(wallMeshEntity, new RenderBounds
+                    {
+                        Value =
+                        new AABB
+                        {
+                            Center = 0,
+                            Extents = 10000000//for testing purpose
+                        }
+                    });
+                    ecb.AddComponent(wallMeshEntity, new Translation { });
+                    //-----------------------------------------------------------------
+
+/*                    MapMeshGenerator floorMeshGenerator = GetMapMeshGenerator(in mapGenReq, in tileMapBuffers, TileType.floor);
+                    RenderMesh floorRenderMesh = floorMeshGenerator.generateRenderMesh(
+    Resources.Load("testMaterial", typeof(UnityEngine.Material)) as UnityEngine.Material,
+    floorMeshGenerator.createTileMesh());
+                    //TODO: Make it read the materail from a material registry instead
+
+                    var floorMeshCoillider = MapGenPhysics.createMeshCollider(floorMeshGenerator.vertices.ToArray(), floorMeshGenerator.triangles.ToArray());
+
+                    var floorMeshEntity = ecb.CreateEntity();
+                    ecb.AddComponent(floorMeshEntity, new PhysicsCollider { Value = floorMeshCoillider });
+                    *//*                    ecb.AddComponent(tileMeshEntity, new Parent {Value=entity});
+                    *//*
+                    ecb.AddComponent(floorMeshEntity, new LocalToWorld { });
+                    ecb.AddSharedComponent(floorMeshEntity, floorRenderMesh);
+                    ecb.AddComponent(floorMeshEntity, new RenderBounds
+                    {
+                        Value =
+                        new AABB
+                        {
+                            Center = 0,
+                            Extents = 10000000//for testing purpose
+                        }
+                    });
+                    ecb.AddComponent(floorMeshEntity, new Translation { });
+
+*/
+                    ecb.RemoveComponent<TileMapGeneration.T_MeshGen>(entity);//mesh Generation finished
+                    ecb.AddComponent<TileMapGeneration.T_SpawnFlagGen>(entity);//Request starting spawn flag generation
+                }
             }
-        ).WithoutBurst().Run();
+        ).WithoutBurst().Run();//TODO : make it parrallel one day
 
         ecbSystem.AddJobHandleForProducer(this.Dependency);
 
     }
 
-    static RenderMesh generateRenderMesh(in MapGenRequirement mapGenReq, in DynamicBuffer<TileMapBufferElement> tileMapBuffer)
+
+    static MapMeshGenerator GetMapMeshGenerator(in MapGenRequirement mapGenReq, in DynamicBuffer<TileMapBufferElement> tileMapBuffer, TileType tType)
     {
-        MapMeshGenerator mapMeshGenerator = new MapMeshGenerator(tileMapBuffer.Reinterpret<int>(), mapGenReq.width, mapGenReq.height, mapGenReq.squareSize);
-        return mapMeshGenerator.generateRenderMesh(Resources.Load("testMaterial", typeof(UnityEngine.Material)) as UnityEngine.Material);
+        return new MapMeshGenerator(tileMapBuffer.Reinterpret<int>(), mapGenReq.width, mapGenReq.height, mapGenReq.squareSize, tType);
     }
 }

@@ -13,7 +13,7 @@ namespace MapGen
 	{
 
 		//TODO : Remove these code once the math library is more complete
-		unsafe NativeArray<float3> GetNativeVertexArrays(Vector3[] vertexArray)
+		unsafe static NativeArray<float3> GetNativeVertexArrays(Vector3[] vertexArray)
 		{
 			// create a destination NativeArray to hold the vertices
 			NativeArray<float3> verts = new NativeArray<float3>(vertexArray.Length, Allocator.Persistent,
@@ -22,7 +22,7 @@ namespace MapGen
 			// pin the mesh's vertex buffer in place...
 			fixed (void* vertexBufferPointer = vertexArray)
 			{
-				// ...and use memcpy to copy the Vector3[] into a NativeArray<floar3> without casting. whould be fast!
+				// ...and use memcpy to copy the Vector3[] into a NativeArray<float3> without casting. whould be fast!
 				UnsafeUtility.MemCpy(NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(verts),
 					vertexBufferPointer, vertexArray.Length * (long)UnsafeUtility.SizeOf<float3>());
 			}
@@ -33,7 +33,7 @@ namespace MapGen
 			return verts;
 		}
 
-		unsafe void SetNativeVertexArray(Vector3[] vertexArray, NativeArray<float3> vertexBuffer)
+		unsafe static void SetNativeVertexArray(Vector3[] vertexArray, NativeArray<float3> vertexBuffer)
 		{
 			// pin the target vertex array and get a pointer to it
 			fixed (void* vertexArrayPointer = vertexArray)
@@ -43,18 +43,18 @@ namespace MapGen
 			}
 		}
 
-		unsafe NativeArray<int3> GetNativeTriangleArrays(int3[] tirangleArray)
+		unsafe static NativeArray<int3> GetNativeTriangleArrays(int[] tirangleArray)
 		{
 			// create a destination NativeArray to hold the vertices
-			NativeArray<int3> trigs = new NativeArray<int3>(tirangleArray.Length, Allocator.Persistent,
+			NativeArray<int3> trigs = new NativeArray<int3>(tirangleArray.Length/3, Allocator.Persistent,
 				NativeArrayOptions.UninitializedMemory);
 
 			// pin the mesh's vertex buffer in place...
 			fixed (void* vertexBufferPointer = tirangleArray)
 			{
-				// ...and use memcpy to copy the Vector3[] into a NativeArray<floar3> without casting. whould be fast!
+				// ...and use memcpy to copy the Vector3[] into a NativeArray<float3> without casting. whould be fast!
 				UnsafeUtility.MemCpy(NativeArrayUnsafeUtility.GetUnsafeBufferPointerWithoutChecks(trigs),
-					vertexBufferPointer, tirangleArray.Length * (long)UnsafeUtility.SizeOf<int3>());
+					vertexBufferPointer, tirangleArray.Length/3 * (long)UnsafeUtility.SizeOf<int3>());
 			}
 			// we only hve to fix the .net array in place, the NativeArray is allocated in the C++ side of the engine and
 			// wont move arround unexpectedly. We have a pointer to it not a reference! thats basically what fixed does,
@@ -66,7 +66,7 @@ namespace MapGen
 
 
 
-		public BlobAssetReference<Unity.Physics.Collider> createMeshCollider(Vector3[] vertices, int3[] triangles)
+		public static BlobAssetReference<Unity.Physics.Collider> createMeshCollider(Vector3[] vertices, int[] triangles)
 		{
 			NativeArray<float3> vBuffer = GetNativeVertexArrays(vertices);
 			NativeArray<int3> tBuffer = GetNativeTriangleArrays(triangles);

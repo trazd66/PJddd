@@ -43,3 +43,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b453da0d7af2a448a158d99a9013143, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  testAsset0:
+    val0: -1673710180
+    val1: 678702232
+    val2: 1460202440
+    val3: 1988657791
+  testAsset1:
+    val0: -1107435192
+    val1: -485176026
+    val2: -1342837127
+    val3: 233404727

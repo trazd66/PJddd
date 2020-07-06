@@ -1,20 +1,23 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Entities;
-using Unity.Transforms;
-using  MapGen;
+using MapGen;
 using Unity.Sample.Core;
-using Unity.Rendering;
-
+using UnityEngine.InputSystem;
 public class TestBootstrap : MonoBehaviour
 {
 
     MapRepo mapRepo;
 
+    public WeakAssetReference testAsset0;
+    public WeakAssetReference testAsset1;
+
+
     public void Initialize()
     {
         mapRepo = new MapRepo(WorldManager.getOrCreateWorld("DefaultWorld"),WorldManager.getOrCreateWorld("MapGenWorld"));
+        ConfigVar.Init();
+        StaticInputController.init();
+        World mapGenWorld = WorldManager.getOrCreateWorld("MapGenWorld");
     }
 
     // Start is called before the first frame update
@@ -27,15 +30,33 @@ public class TestBootstrap : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        World mapGenWorld = WorldManager.getOrCreateWorld("MapGenWorld");
-        if (Input.GetKeyDown(KeyCode.A))
+        if (Keyboard.current[Key.X].wasReleasedThisFrame)
         {
-            mapGenWorld.EntityManager.DestroyEntity(mapGenWorld.EntityManager.GetAllEntities());
-            mapRepo.generateRandomMap(mapType.Cave, 200, 100);
+            mapRepo.testMap = mapRepo.generateRandomMap(mapTheme.test, mapType.Cave, 500, 500);
         }
-        if (Input.GetKeyDown(KeyCode.B))
+
+        if (Keyboard.current[Key.M].wasReleasedThisFrame)
         {
-            World.DefaultGameObjectInjectionWorld.EntityManager.CopyAndReplaceEntitiesFrom(mapGenWorld.EntityManager);
+            mapRepo.moveMapToRenderWorld(ref mapRepo.testMap);
         }
+/*        World mapGenWorld = WorldManager.getOrCreateWorld("MapGenWorld");
+        var testMap = mapRepo.generateRandomMap(mapType.Cave, 200, 100);
+
+        var entityArr = new NativeArray<Entity>(1,Allocator.Temp);
+        entityArr[0] = testMap;
+        World.DefaultGameObjectInjectionWorld.EntityManager.CopyEntitiesFrom(mapGenWorld.EntityManager, entityArr);
+*/
+
+
+/*        if (Input.GetKeyDown(KeyCode.A))
+                {
+                    mapGenWorld.EntityManager.DestroyEntity(mapGenWorld.EntityManager.GetAllEntities());
+                    mapRepo.generateRandomMap(mapType.Cave, 200, 100);
+                }
+                if (Input.GetKeyDown(KeyCode.B))
+                {
+                    World.DefaultGameObjectInjectionWorld.EntityManager.CopyAndReplaceEntitiesFrom(mapGenWorld.EntityManager);
+                }
+        */
     }
 }

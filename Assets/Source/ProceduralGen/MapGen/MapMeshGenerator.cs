@@ -1,21 +1,26 @@
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Rendering;
 using Unity.Entities;
-using UnityEngine.Tilemaps;
 using Unity.Collections;
-using Unity.Sample.Core;
 
-namespace MapGen{
+namespace MapGen
+{
     /*
     Code adpated from https://github.com/SebLague/Procedural-Cave-Generation
     */
     public class MapMeshGenerator{
 
         public SquareGrid squareGrid;
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
+
+        public List<Vector3> vertices = new List<Vector3>();
+        public List<int> triangles = new List<int>();
+
+
+        public List<Vector3> wallVertices;
+        public List<int> wallTriangles;
+
+
 
         Dictionary<int,List<Triangle>> triangleDictionary = new Dictionary<int, List<Triangle>> ();
         List<List<int>> outlines = new List<List<int>> ();
@@ -25,38 +30,48 @@ namespace MapGen{
         int height;
 
 
-        public MapMeshGenerator(DynamicBuffer<int> tilemap, int width, int height, float sqaureSize)
+        public MapMeshGenerator(DynamicBuffer<int> tilemap, int width, int height, float sqaureSize,TileType meshType)
         {
            this.width = width;
            this.height = height;
-           squareGrid = new SquareGrid(tilemap.AsNativeArray(), width, height, sqaureSize);
+           squareGrid = new SquareGrid(tilemap.AsNativeArray(), width, height, sqaureSize, meshType);
 
             for (int x = 0; x < squareGrid.GetLength(0); x++)
             {
                 for (int y = 0; y < squareGrid.GetLength(1); y++)
                 {
-                    TriangulateSquare(squareGrid.GetSquare(x, y));
+                    Square top = (y != squareGrid.GetLength(1) - 1)? squareGrid.GetSquare(x, y + 1) : null;
+                    Square left = (x != 0) ? squareGrid.GetSquare(x - 1, y) : null;
+                    Square bot = (y != 0) ? squareGrid.GetSquare(x, y - 1) : null;
+                    Square right = (x != squareGrid.GetLength(0) - 1) ? squareGrid.GetSquare(x + 1, y) : null;
+
+                    TriangulateSquare(squareGrid.GetSquare(x, y), top, left, bot, right);
                 }
             }
 
         }
 
-        public RenderMesh generateRenderMesh(Material material){
+        public RenderMesh generateRenderMesh(Material material,Mesh mesh)
+        {
 
             RenderMesh rend = new RenderMesh();
+            rend.mesh = mesh;
+            rend.material = material;
+            return rend;
+        }
+
+        public Mesh createTileMesh()
+        {
             Mesh mesh = new Mesh();
             mesh.vertices = vertices.ToArray();
             mesh.triangles = triangles.ToArray();
-
-/*            mesh.uv = generateUVs();
-*/            mesh.RecalculateNormals();
+            /*            mesh.uv = generateUVs();
+*/          mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             mesh.Optimize();
-            rend.mesh = mesh;
-            rend.material = material;
-/*            rend.receiveShadows = true;
-*/
-            return rend;
+            /*            rend.receiveShadows = true;
+            */
+            return mesh;
         }
 
         public Vector2[] generateUVs()
@@ -136,6 +151,487 @@ namespace MapGen{
 
         }
 
+
+        void TriangulateSquare(Square square, Square top, Square left, Square bot, Square right)
+        {
+            List<Vector3> spline = !((square.configuration & ~square.configuration) == 0) ? null : InterpolateSpine(square, top, left, bot, right);
+            switch (square.configuration)
+            {
+                case 0:
+                    break;
+
+                // 1 points:
+
+                case 0b0001:
+                    if (spline != null)
+                        MeshFromSpline(square.bottomLeft, square.centreLeft, square.centreBottom, spline);
+                    else
+                        MeshFromPoints(square.bottomLeft, square.centreLeft, square.centreBottom);
+
+                    break;
+
+                case 0b0010:
+                    if (spline != null)
+                    {
+                        spline.Reverse();
+                        MeshFromSpline(square.bottomRight, square.centreBottom, square.centreRight, spline);
+                    }
+
+                    else
+                        MeshFromPoints(square.bottomRight, square.centreBottom, square.centreRight);
+                    break;
+
+                case 0b0100:
+                    if (spline != null)
+                    {
+                        spline.Reverse();
+                        MeshFromSpline(square.topRight, square.centreRight, square.centreTop, spline);
+                    }
+                    else
+                        MeshFromPoints(square.topRight, square.centreRight, square.centreTop);
+                    break;
+                case 0b1000:
+                    if (spline != null)
+                        MeshFromSpline(square.topLeft, square.centreTop, square.centreLeft, spline);
+                    else
+                        MeshFromPoints(square.topLeft, square.centreTop, square.centreLeft);
+                    break;
+
+
+
+                // 2 points:
+                case 0b0011:
+                    MeshFromPoints(square.centreRight, square.bottomRight, square.bottomLeft, square.centreLeft);
+                    break;
+                case 0b0110:
+                    MeshFromPoints(square.centreTop, square.topRight, square.bottomRight, square.centreBottom);
+                    break;
+                case 0b1001:
+                    MeshFromPoints(square.topLeft, square.centreTop, square.centreBottom, square.bottomLeft);
+                    break;
+                case 0b1100:
+                    MeshFromPoints(square.topLeft, square.topRight, square.centreRight, square.centreLeft);
+                    break;
+                case 0b0101:
+                    MeshFromPoints(square.centreTop, square.topRight, square.centreRight, square.centreBottom, square.bottomLeft, square.centreLeft);
+                    break;
+                case 0b1010:
+                    MeshFromPoints(square.topLeft, square.centreTop, square.centreRight, square.bottomRight, square.centreBottom, square.centreLeft);
+                    break;
+
+
+                // 3 point:
+                case 0b0111:
+                    MeshFromPoints(square.bottomRight, square.centreTop, square.topRight);
+                    if (spline != null)
+                    {
+                        spline.Reverse();
+                        MeshFromSpline(square.bottomRight, square.centreLeft, square.centreTop, spline);
+                    }
+                    else
+                        MeshFromPoints(square.bottomRight, square.centreLeft, square.centreTop);
+
+                    MeshFromPoints(square.bottomRight, square.bottomLeft, square.centreLeft);
+
+                    break;
+
+                case 0b1011:
+                    MeshFromPoints(square.bottomLeft, square.topLeft, square.centreTop);
+                    if (spline != null)
+                    {
+                        MeshFromSpline(square.bottomLeft, square.centreTop, square.centreRight, spline);
+                    }
+                    else
+                        MeshFromPoints(square.bottomLeft, square.centreTop, square.centreRight);
+
+                    MeshFromPoints(square.bottomLeft, square.centreRight, square.bottomRight);
+                    break;
+
+                case 0b1101:
+                    MeshFromPoints(square.topLeft, square.topRight, square.centreRight);
+                    if (spline != null)
+                        MeshFromSpline(square.topLeft, square.centreRight, square.centreBottom, spline);
+                    else
+                        MeshFromPoints(square.topLeft, square.centreRight, square.centreBottom);
+
+                    MeshFromPoints(square.topLeft, square.centreBottom, square.bottomLeft);
+                    break;
+
+                case 0b1110:
+                    MeshFromPoints(square.topRight, square.bottomRight, square.centreBottom);
+                    if (spline != null)
+                    {
+                        spline.Reverse();
+                        MeshFromSpline(square.topRight, square.centreBottom, square.centreLeft, spline);
+                    }
+                    else
+                        MeshFromPoints(square.topRight, square.centreBottom, square.centreLeft);
+
+                    MeshFromPoints(square.topRight, square.centreLeft, square.topLeft);
+                    break;
+
+
+
+
+
+                // 4 point:
+
+                case 0b1111:
+                    MeshFromPoints(square.topLeft, square.topRight, square.bottomRight, square.bottomLeft);
+                    checkedVertices.Add(square.topLeft.vertexIndex);
+                    checkedVertices.Add(square.topRight.vertexIndex);
+                    checkedVertices.Add(square.bottomRight.vertexIndex);
+                    checkedVertices.Add(square.bottomLeft.vertexIndex);
+                    break;
+
+            }
+
+        }
+
+        /***
+         * 1   2
+         * 3   4
+         ***/
+        List<Vector3> InterpolateSpine(Square square, Square top, Square left, Square bot, Square right)
+        {
+            Node p0,p1,p2,p3;
+            p0 = square.centreBottom;
+            p1 = square.centreBottom;
+            p2 = square.centreBottom;
+            p3 = square.centreBottom;
+            //Config
+            bool neighborStraight0 = false;
+            bool neighborStraight1 = false;
+            switch (square.configuration)
+            {
+                case 0:
+                    break;
+
+
+                //1 point
+                case 0b0001:
+                    switch (left.configuration)
+                    {
+                        case 0b0011:
+                            p0 = left.centreLeft;
+                            p1 = left.centreRight;
+                            break;
+
+                        case 0b0010:
+                            p0 = left.centreBottom;
+                            p1 = left.centreRight;
+                            break;
+
+                        case 0b1011:
+                            p0 = left.centreTop;
+                            p1 = left.centreRight;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (bot.configuration)
+                    {
+                        case 0b1000:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreLeft;
+                            break;
+                        case 0b1001:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreBottom;
+                            break;
+                        case 0b1011:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreRight;
+                            neighborStraight1 = true;
+                            break;
+
+                    }
+                    break;
+
+                case 0b0010:
+                    switch (right.configuration)
+                    {
+                        case 0b0011:
+                            p0 = right.centreRight;
+                            p1 = right.centreLeft;
+                            break;
+                        case 0b0001:
+                            p0 = right.centreBottom;
+                            p1 = right.centreLeft;
+                            break;
+                        case 0b0111:
+                            p0 = right.centreTop;
+                            p1 = right.centreLeft;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (bot.configuration)
+                    {
+                        case 0b0110:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreBottom;
+                            break;
+                        case 0b0100:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreRight;
+                            break;
+                        case 0b0111:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreLeft;
+                            neighborStraight1 = true;
+                            break;
+                    }
+                    break;
+
+                case 0b0100:
+                    switch (top.configuration)
+                    {
+                        case 0b0110:
+                            p0 = top.centreTop;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b0010:
+                            p0 = top.centreRight;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b1110:
+                            p0 = top.centreLeft;
+                            p1 = top.centreBottom;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (right.configuration)
+                    {
+                        case 0b1100:
+                            p2 = right.centreLeft;
+                            p3 = right.centreRight;
+                            break;
+                        case 0b1000:
+                            p2 = right.centreLeft;
+                            p3 = right.centreTop;
+                            break;
+                        case 0b1110:
+                            p2 = right.centreLeft;
+                            p3 = right.centreBottom;
+                            neighborStraight1 = true;
+                            break;
+                    }
+                    break;
+
+                case 0b1000:
+                    switch (top.configuration)
+                    {
+                        case 0b1001:
+                            p0 = top.centreTop;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b0001:
+                            p0 = top.centreLeft;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b1101:
+                            p0 = top.centreRight;
+                            p1 = top.centreBottom;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (left.configuration)
+                    {
+                        case 0b1100:
+                            p2 = left.centreRight;
+                            p3 = left.centreLeft;
+                            break;
+                        case 0b0100:
+                            p2 = left.centreRight;
+                            p3 = left.centreTop;
+
+                            break;
+                        case 0b1101:
+                            p2 = left.centreRight;
+                            p3 = left.centreBottom;
+                            neighborStraight1 = true;
+                            break;
+                    }
+                    break;
+
+
+                //3 points
+                case 0b0111:
+                    switch (top.configuration)
+                    {
+                        case 0b1110:
+                            p0 = top.centreLeft;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b0110:
+                            p0 = top.centreTop;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b0010:
+                            p0 = top.centreRight;
+                            p1 = top.centreBottom;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (left.configuration)
+                    {
+                        case 0b1011:
+                            p2 = left.centreRight;
+                            p3 = left.centreTop;
+                            break;
+                        case 0b0011:
+                            p2 = left.centreRight;
+                            p3 = left.centreLeft;
+                            break;
+                        case 0b0010:
+                            p2 = left.centreRight;
+                            p3 = left.centreBottom;
+                            neighborStraight1 = true;
+                            break;
+                    }
+                    break;
+                case 0b1011:
+                    switch (top.configuration)
+                    {
+                        case 0b1001:
+                            p0 = top.centreTop;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b1101:
+                            p0 = top.centreRight;
+                            p1 = top.centreBottom;
+                            break;
+                        case 0b0001:
+                            p0 = top.centreLeft;
+                            p1 = top.centreBottom;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (right.configuration)
+                    {
+                        case 0b0011:
+                            p2 = right.centreLeft;
+                            p3 = right.centreRight;
+                            break;
+                        case 0b0111:
+                            p2 = right.centreLeft;
+                            p3 = right.centreTop;
+                            break;
+                        case 0b0001:
+                            p2 = right.centreLeft;
+                            p3 = right.centreBottom;
+                            neighborStraight1 = true;
+                            break;
+                    }
+                    break;
+                case 0b1101:
+                    switch (right.configuration)
+                    {
+                        case 0b1100:
+                            p0 = right.centreRight;
+                            p1 = right.centreLeft;
+                            break;
+                        case 0b1110:
+                            p0 = right.centreBottom;
+                            p1 = right.centreLeft;
+                            break;
+                        case 0b1000:
+                            p0 = right.centreTop;
+                            p1 = right.centreLeft;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (bot.configuration)
+                    {
+                        case 0b1001:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreBottom;
+                            break;
+                        case 0b1011:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreRight;
+                            break;
+                        case 0b1000:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreLeft;
+                            neighborStraight1 = true;
+                            break;
+                    }
+                    break;
+                case 0b1110:
+                    switch (left.configuration)
+                    {
+                        case 0b1100:
+                            p0 = left.centreLeft;
+                            p1 = left.centreRight;
+                            break;
+
+                        case 0b1101:
+                            p0 = left.centreBottom;
+                            p1 = left.centreRight;
+                            break;
+
+                        case 0b0100:
+                            p0 = left.centreTop;
+                            p1 = left.centreRight;
+                            neighborStraight0 = true;
+                            break;
+                    }
+                    switch (bot.configuration)
+                    {
+                        case 0b0111:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreLeft;
+                            break;
+                        case 0b0110:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreBottom;
+                            break;
+                        case 0b0100:
+                            p2 = bot.centreTop;
+                            p3 = bot.centreRight;
+                            neighborStraight1 = true;
+                            break;
+
+                    }
+                    break;
+
+            }
+            if (neighborStraight0 && neighborStraight1)
+            {
+                return null;
+            }
+            var retval = CatmullRomSpline.getPoints(p0.position, p1.position, p2.position, p3.position);
+
+            return retval;
+        }
+
+
+        void MeshFromSpline(Node n0, Node n1, Node n2, List<Vector3> splineVertecies)
+        {
+            Node[] splineNodes = getSplineNodes(splineVertecies);
+            AssignVertices(n0, n1, n2);
+            AssignVertices(splineNodes);
+            CreateTriangle(n0, n1, splineNodes[0]);
+            for (int i = 0; i< splineNodes.Length - 1; i++)
+            {
+                CreateTriangle(n0, splineNodes[i], splineNodes[i+1]);
+            }
+
+            CreateTriangle(n0, splineNodes[splineNodes.Length - 1], n2);
+
+
+        }
+
+        private Node[] getSplineNodes(List<Vector3> splineVertecies)
+        {
+            List<Node> nodes = new List<Node>();
+            foreach (Vector3 pos in splineVertecies)
+            {
+                nodes.Add(new Node(pos));
+            }
+            return nodes.ToArray();
+        }
+
         void MeshFromPoints(params Node[] points) {
             AssignVertices(points);
 
@@ -150,7 +646,7 @@ namespace MapGen{
 
         }
 
-        void AssignVertices(Node[] points) {
+        void AssignVertices(params Node[] points) {
             for (int i = 0; i < points.Length; i ++) {
                 if (points[i].vertexIndex == -1) {
                     points[i].vertexIndex = vertices.Count;
@@ -180,6 +676,38 @@ namespace MapGen{
             }
         }
 
+        public Mesh CreateWallMesh(int wallHeight)
+        {
+
+            CalculateMeshOutlines();
+
+            wallVertices = new List<Vector3>();
+            wallTriangles = new List<int>();
+            Mesh wallMesh = new Mesh();
+
+            foreach (List<int> outline in outlines)
+            {
+                for (int i = 0; i < outline.Count - 1; i++)
+                {
+                    int startIndex = wallVertices.Count;
+                    wallVertices.Add(vertices[outline[i]]); // left
+                    wallVertices.Add(vertices[outline[i + 1]]); // right
+                    wallVertices.Add(vertices[outline[i]] - Vector3.up * wallHeight); // bottom left
+                    wallVertices.Add(vertices[outline[i + 1]] - Vector3.up * wallHeight); // bottom right
+
+                    wallTriangles.Add(startIndex + 0);
+                    wallTriangles.Add(startIndex + 2);
+                    wallTriangles.Add(startIndex + 3);
+
+                    wallTriangles.Add(startIndex + 3);
+                    wallTriangles.Add(startIndex + 1);
+                    wallTriangles.Add(startIndex + 0);
+                }
+            }
+            wallMesh.vertices = wallVertices.ToArray();
+            wallMesh.triangles = wallTriangles.ToArray();
+            return wallMesh;
+        }
         void CalculateMeshOutlines() {
 
             for (int vertexIndex = 0; vertexIndex < vertices.Count; vertexIndex ++) {
@@ -208,7 +736,7 @@ namespace MapGen{
             }
         }
 
-      private int GetConnectedOutlineVertex(int vertexIndex) {
+        private int GetConnectedOutlineVertex(int vertexIndex) {
             List<Triangle> trianglesContainingVertex = triangleDictionary [vertexIndex];
 
             for (int i = 0; i < trianglesContainingVertex.Count; i ++) {
@@ -227,7 +755,7 @@ namespace MapGen{
             return -1;
         }
 
-       private bool IsOutlineEdge(int vertexA, int vertexB) {
+        private bool IsOutlineEdge(int vertexA, int vertexB) {
             List<Triangle> trianglesContainingVertexA = triangleDictionary [vertexA];
             int sharedTriangleCount = 0;
 
@@ -275,30 +803,7 @@ namespace MapGen{
         public class SquareGrid {
             public Square[,] squares;
 
-            public SquareGrid(int[,] map, float squareSize) {
-                int nodeCountX = map.GetLength(0);
-                int nodeCountY = map.GetLength(1);
-                float mapWidth = nodeCountX * squareSize;
-                float mapHeight = nodeCountY * squareSize;
-
-                ControlNode[,] controlNodes = new ControlNode[nodeCountX,nodeCountY];
-
-                for (int x = 0; x < nodeCountX; x++) {
-                    for (int y = 0; y < nodeCountY; y++) {
-                        Vector3 pos = new Vector3(-mapWidth/2 + x * squareSize + squareSize/2, 0, -mapHeight/2 + y * squareSize + squareSize/2);
-                        controlNodes[x,y] = new ControlNode(pos,map[x,y] == 0, squareSize);
-                    }
-                }
-
-                squares = new Square[nodeCountX -1,nodeCountY -1];
-                for (int x = 0; x < nodeCountX - 1; x++) {
-                    for (int y = 0; y < nodeCountY - 1; y++) {
-                        squares[x,y] = new Square(controlNodes[x,y+1], controlNodes[x+1,y+1], controlNodes[x+1,y], controlNodes[x,y]);
-                    }
-                }
-            }
-
-            public SquareGrid(NativeArray<int> map, int width, int height, float squareSize)
+            public SquareGrid(NativeArray<int> map, int width, int height, float squareSize, TileType meshType)
             {
 
                 float mapWidth = width * squareSize;
@@ -312,7 +817,7 @@ namespace MapGen{
                     for (int x = 0; x < width; x++)
                     {
                         Vector3 pos = new Vector3(-mapWidth / 2 + x * squareSize + squareSize / 2, 0, -mapHeight / 2 + y * squareSize + squareSize / 2);
-                        controlNodes[x, y] = new ControlNode(pos, map[x + y_index] == 1, squareSize);
+                        controlNodes[x, y] = new ControlNode(pos, map[x + y_index] == (int)meshType, squareSize);
                     }
                 }
 
@@ -339,7 +844,7 @@ namespace MapGen{
 
             public ControlNode topLeft, topRight, bottomRight, bottomLeft;
             public Node centreTop, centreRight, centreBottom, centreLeft;
-            public int configuration;
+            public uint configuration;
 
             public Square (ControlNode _topLeft, ControlNode _topRight, ControlNode _bottomRight, ControlNode _bottomLeft) {
                 topLeft = _topLeft;

@@ -1,5 +1,6 @@
-﻿#define CUSTOM_BOOTSTRAP
-#if CUSTOM_BOOTSTRAP
+﻿#define UNITY_DISABLE_AUTOMATIC_SYSTEM_BOOTSTRAP
+
+#if UNITY_DISABLE_AUTOMATIC_SYSTEM_BOOTSTRAP
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -37,6 +38,11 @@ namespace DOTS.Bootstrap
             var default_systems = DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default) as List<Type>;
             
             DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(default_world, default_systems);
+            var charConSystem = default_world.AddSystem(new CharacterControlSystem());
+            var simSysGroup = default_world.GetOrCreateSystem<SimulationSystemGroup>();
+            simSysGroup.AddSystemToUpdateList(charConSystem);
+            simSysGroup.SortSystems();
+
             UpdatePlayerLoop(default_world);
 
         }
@@ -55,7 +61,7 @@ namespace DOTS.Bootstrap
             initSysGroup.AddSystemToUpdateList(ecbSystem);
             initSysGroup.AddSystemToUpdateList(mapMeshGenSys);
 
-            initSysGroup.SortSystemUpdateList();
+            initSysGroup.SortSystems();
 
             UpdatePlayerLoop(mapGenWorld);
         }
